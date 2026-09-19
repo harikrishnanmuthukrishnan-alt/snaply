@@ -19,6 +19,25 @@ import { uploadMedia } from '../services/storage'
 
 type Mode = 'post' | 'clip' | 'story'
 
+function publishErrorMessage(error: unknown) {
+  if (error && typeof error === 'object') {
+    const detail = error as { message?: unknown; details?: unknown; hint?: unknown; code?: unknown }
+    const message = typeof detail.message === 'string' ? detail.message : ''
+    const details = typeof detail.details === 'string' ? detail.details : ''
+    const hint = typeof detail.hint === 'string' ? detail.hint : ''
+    const combined = [message, details, hint].filter(Boolean).join(' ')
+
+    if (/row-level security|permission denied/i.test(combined)) {
+      return 'Snaply does not have permission to publish this yet. Please refresh, sign in again, and try once more.'
+    }
+    if (/bucket not found/i.test(combined)) {
+      return 'Uploads are not configured yet. Ask the site owner to run the Supabase storage setup.'
+    }
+    if (message) return `Could not publish: ${message}`
+  }
+  return 'Upload failed. Try again.'
+}
+
 export function CreatePage() {
   const [params] = useSearchParams()
   const initial = (params.get('mode') as Mode) || 'post'
@@ -106,12 +125,7 @@ export function CreatePage() {
         navigate(mode === 'clip' ? '/clips' : '/home')
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : ''
-      if (/bucket not found/i.test(message)) {
-        push('Uploads are not configured yet. Ask the site owner to run the Supabase storage setup.', 'error')
-      } else {
-        push(message || 'Upload failed. Try again.', 'error')
-      }
+      push(publishErrorMessage(err), 'error')
     } finally {
       setBusy(false)
     }
