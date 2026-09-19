@@ -106,7 +106,12 @@ export function CreatePage() {
         navigate(mode === 'clip' ? '/clips' : '/home')
       }
     } catch (err) {
-      push(err instanceof Error ? err.message : 'Upload failed. Try again.', 'error')
+      const message = err instanceof Error ? err.message : ''
+      if (/bucket not found/i.test(message)) {
+        push('Uploads are not configured yet. Ask the site owner to run the Supabase storage setup.', 'error')
+      } else {
+        push(message || 'Upload failed. Try again.', 'error')
+      }
     } finally {
       setBusy(false)
     }
